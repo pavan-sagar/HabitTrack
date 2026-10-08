@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HabitTrack - Personal Habit Tracker
+
+A modern, mobile-first habit tracking web application built with Next.js, TypeScript, and SQLite.
+
+## Features
+
+- **Multiple Profiles** - Create separate profiles for different people or purposes
+- **Daily Habit Tracking** - Mark habits as completed with a simple checkbox
+- **Streak Analytics** - Track current and longest streaks for each habit
+- **Activity Heatmap** - Visual monthly calendar showing your completion history
+- **Progress Charts** - Bar charts and pie charts showing your habit statistics
+- **Persistent Storage** - SQLite database for reliable data storage
+
+## Tech Stack
+
+- **Framework**: Next.js 13 (App Router)
+- **Database**: SQLite (better-sqlite3)
+- **Styling**: Tailwind CSS
+- **Charts**: Recharts
+- **Animations**: Framer Motion
+- **Icons**: Lucide React
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+ and npm installed
+
+### Installation
+
+1. Navigate to the project direct1. Navigate to the project direct1. Navigate to the project direct1. Navipm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project S## Project S## Project S## Project S## Project S## Project S## Project S## Proje ├── api/          # API routes (profiles, habits, logs, analytics)
+│   │   ├── profiles/     # Profile management page
+│   │   ├── profile/[id]/ # Profile detail with habit tracking
+│   │   └── stats/[id]/   # Analytics and charts
+│   ├── lib/
+│   │   └── db.ts         # SQLite database wrapper
+│   └── app.tsx           # Root app component
+├── habits.db             # SQLite database (auto-created)
+└── package.json
+```
 
-## Learn More
+## API Endpoints
 
-To learn more about Next.js, take a look at the following resources:
+- `GET /api/prof- `GET /api/prof- `GET /api/`POS- `GET /api/prof- `GET /e a new profile
+- `DELETE /api/profiles` -- `DELETE /api/profiles` -- `Dhab- `DELETE /api/xx` - List habits for a profile
+- `POST /api/habits` - Create a new habit
+- `DELETE /api/habits` - Delete a habit
+- `GET- api- `GET- api- `GET- &date=xxx` -- `GETogs for a date
+- `POST /api/logs` - Toggle habit completion
+- `GET /api/analytics?profileId=xxx&year=xxx&month=xxx` - Get analytics data
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Vercel
 
-## Deploy on Vercel
+1. Push your code to a GitHub repository
+2. Import the repository into Vercel
+3. The app wil3. The app wil3. The app wil3. The app wil3. The app wil3. T consider using a hosted SQLite service like Turso or Neon instead of the local file-based database.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Cloudflare Workers
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app can be adapted for Cloudflare Workers with a SQLite adapter like `@cloudflare/kv-sqlite`.
+
+## License
+
+MIT
