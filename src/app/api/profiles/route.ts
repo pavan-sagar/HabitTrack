@@ -19,11 +19,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name } = await request.json();
+    const { name, pin } = await request.json();
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
-    const profile = createProfile(name);
+    const profile = createProfile(name, pin);
     return NextResponse.json(profile, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
@@ -32,9 +32,12 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { id } = await request.json();
+    const { id, pin } = await request.json();
     if (!id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+    if (pin !== undefined && !verifyProfilePin(id, String(pin))) {
+      return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
     deleteProfile(id);
     return NextResponse.json({ success: true });

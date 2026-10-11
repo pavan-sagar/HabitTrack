@@ -1,57 +1,73 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 
 const dbPath = path.join(process.cwd(), 'habits.db');
 const db = new Database(dbPath);
 
 db.pragma('foreign_keys = ON');
 
+function hashPin(pin: string): string {
+  return createHash('sha256').update(pin + '_salt_habittrack').digest('hex');
+}
+
 export function initializeDatabase() {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS profiles (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      createdAt TEXT NOT NULL
-    );
+    CREATE TABLE IF NOT EXISTS profiles (\n      id TEXT PRIMARY KEY,\n      name TEXT NOT NULL,\n      createdAt TEXT NOT NULL,\n      pin TEXT\n    );
 
-    CREATE TABLE IF NOT EXISTS habits (
-      id TEXT PRIMARY KEY,
-      profileId TEXT NOT NULL,
-      title TEXT NOT NULL,
-      description TEXT,
-      createdAt TEXT NOT NULL,
-      FOREIGN KEY (profileId) REFERENCES profiles(id) ON DELETE CASCADE
-    );
+    CREATE TABLE IF NOT EXISTS habits (\n      id TEXT PRIMARY KEY,\n      profileId TEXT NOT NULL,\n      title TEXT NOT NULL,\n      description TEXT,\n      createdAt TEXT NOT NULL,\n      FOREIGN KEY (profileId) REFERENCES profiles(id) ON DELETE CASCADE\n    );
 
-    CREATE TABLE IF NOT EXISTS logs (
-      id TEXT PRIMARY KEY,
-      habitId TEXT NOT NULL,
-      completedAt TEXT NOT NULL,
-      FOREIGN KEY (habitId) REFERENCES habits(id) ON DELETE CASCADE
-    );
+    CREATE TABLE IF NOT EXISTS logs (\n      id TEXT PRIMARY KEY,\n      habitId TEXT NOT NULL,\n      completedAt TEXT NOT NULL,\n      FOREIGN KEY (habitId) REFERENCES habits(id) ON DELETE CASCADE\n    );
 
     CREATE INDEX IF NOT EXISTS idx_habits_profileId ON habits(profileId);
     CREATE INDEX IF NOT EXISTS idx_logs_habitId ON logs(habitId);
     CREATE INDEX IF NOT EXISTS idx_logs_completedAt ON logs(completedAt);
   `);
+
+  try {
+    db.exec(`ALTER TABLE profiles ADD COLUMN pin TEXT;`);
+  } catch (e) {
+    // Column already exists
+  }
 }
 
-export function createProfile(name: string) {
+export function createProfile(name: string, pin?: string) {
   const id = randomUUID();
-  const stmt = db.prepare('INSERT INTO profiles (id, name, createdAt) VALUES (?, ?, ?)');
-  stmt.run(id, name, new Date().toISOString());
+  const hashedPin = pin && pin.trim().length === 4 ? hashPin(pin.trim()) : null;
+  const stmt = db.prepare('INSERT INTO profiles (id, name, createdAt, pin) VALUES (?, ?, ?, ?)');
+  stmt.run(id, name, new Date().toISOString(), hashedPin);
   return getProfile(id);
 }
 
 export function getProfiles() {
-  const stmt = db.prepare('SELECT * FROM profiles ORDER BY createdAt DESC');
-  return stmt.all();
+  const stmt = db.prepare(`
+    SELECT id, name, createdAt,
+      CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as isProtected
+    FROM profiles
+    ORDER BY createdAt DESC
+  `);
+  const rows = stmt.all() as any[];
+  return rows.map((r) => ({ ...r, isProtected: Boolean(r.isProtected) }));
 }
 
 export function getProfile(id: string) {
-  const stmt = db.prepare('SELECT * FROM profiles WHERE id = ?');
-  return stmt.get(id);
+  const stmt = db.prepare(`
+    SELECT id, name, createdAt,
+      CASE WHEN pin IS NOT NULL AND pin != '' THEN 1 ELSE 0 END as isProtected
+    FROM profiles
+    WHERE id = ?
+  `);
+  const profile = stmt.get(id) as any;
+  if (!profile) return null;
+  return { ...profile, isProtected: Boolean(profile.isProtected) };
+}
+
+export function verifyProfilePin(id: string, pin: string): boolean {
+  const stmt = db.prepare('SELECT pin FROM profiles WHERE id = ?');
+  const row = stmt.get(id) as any;
+  if (!row) return false;
+  if (!row.pin) return true; // not protected
+  return row.pin === hashPin(pin.trim());
 }
 
 export function deleteProfile(id: string) {

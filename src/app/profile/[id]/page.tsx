@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Plus, Check, Calendar, BarChart3, Trash2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PinModal } from "@/components/PinModal";
+import { isProfileUnlocked, setProfileUnlocked, lockProfile } from "@/lib/pinAuth";
 
 const COLORS = [
   "from-pink-400 to-pink-600",
@@ -57,6 +59,7 @@ interface Profile {
   id: string;
   name: string;
   createdAt: string;
+  isProtected?: boolean;
 }
 
 function HabitCard({
@@ -192,32 +195,42 @@ export default function ProfilePage() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [needsPin, setNeedsPin] = useState(false);
+  const [skipPinCheck, setSkipPinCheck] = useState(false);
 
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const loadData = useCallback(async () => {
     if (!id) return;
     try {
-      const [pRes, hRes, lRes] = await Promise.all([
-        fetch(`/api/profiles?id=${id}`),
+      // First, check if profile is protected and needs PIN
+      const pRes = await fetch(`/api/profiles?id=${id}`);
+      const pData = pRes.ok ? await pRes.json() : null;
+
+      if (pData && !pData.error) {
+        setProfile(pData);
+        if (pData.isProtected && !isProfileUnlocked(id) && !skipPinCheck) {
+          setNeedsPin(true);
+          setIsLoading(false);
+          return; // Don't load habits/logs until PIN is verified
+        }
+      }
+
+      const [hRes, lRes] = await Promise.all([
         fetch(`/api/habits?profileId=${id}`),
         fetch(`/api/logs?profileId=${id}&date=${todayStr}`),
       ]);
 
-      const [pData, hData, lData] = await Promise.all([
-        pRes.ok ? pRes.json() : null,
+      const [hData, lData] = await Promise.all([
         hRes.ok ? hRes.json() : [],
         lRes.ok ? lRes.json() : [],
       ]);
 
-      if (pData && !pData.error) {
-        setProfile(pData);
-      }
       setHabits(Array.isArray(hData) ? hData : []);
       setLogs(Array.isArray(lData) ? lData : []);
     } catch (err) {
@@ -229,7 +242,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, id]);
+
 
   const toggleLog = async (habitId: string) => {
     const isCurrentlyDone = logs.some(
@@ -355,6 +369,25 @@ export default function ProfilePage() {
           </div>
         </main>
       </div>
+    );
+  }
+
+  if (needsPin && profile) {
+    return (
+      <PinModal
+        isOpen={true}
+        profileId={profile.id}
+        profileName={profile.name}
+        onSuccess={() => {
+          setProfileUnlocked(id);
+          setSkipPinCheck(true);
+          setNeedsPin(false);
+          loadData();
+        }}
+        onCancel={() => {
+          window.location.href = "/profiles";
+        }}
+      />
     );
   }
 
